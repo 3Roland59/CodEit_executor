@@ -1,31 +1,31 @@
 {
   "python": {
-    "image": "python:3.10",
+    "image": "python:3.12-alpine",
     "extension": "py",
     "command": "python /code/Main.py"
   },
   "javascript": {
-    "image": "node:18",
+    "image": "node:20-alpine",
     "extension": "js",
     "command": "node /code/Main.js"
   },
   "typescript": {
-    "image": "node:18",
+    "image": "node:20-alpine",
     "extension": "ts",
     "command": "npx ts-node /code/Main.ts"
   },
   "java": {
-    "image": "openjdk:17",
+    "image": "openjdk:17-alpine",
     "extension": "java",
     "command": "javac /code/Main.java && java -cp /code Main"
   },
   "go": {
-    "image": "golang:1.20",
+    "image": "golang:1.24-alpine",
     "extension": "go",
     "command": "go run /code/main.go"
   },
   "cpp": {
-    "image": "gcc:latest",
+    "image": "gcc:13.2.1-alpine",
     "extension": "cpp",
     "command": "g++ /code/main.cpp -o /code/app && /code/app"
   }

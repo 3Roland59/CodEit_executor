@@ -1,37 +1,37 @@
-# Stage 1: Build the Go binary
-FROM golang:1.21 AS builder
+# Stage 1: Pull required language images
+FROM docker:24.0.7-cli AS puller
 
-# Set the working directory inside the container
+RUN docker pull python:3.12-alpine && \
+    docker pull node:20-alpine && \
+    docker pull openjdk:17-alpine && \
+    docker pull golang:1.24-alpine && \
+    docker pull gcc:13.2.1-alpine
+
+# Stage 2: Build the Go binary
+FROM golang:1.24.2-alpine AS builder
+
 WORKDIR /app
 
-# Copy go.mod and go.sum before copying the rest for better caching
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code
 COPY . .
 
-# Build the Go binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o executor ./cmd/server
 
-# Stage 2: Create a small runtime image
-FROM alpine:latest
+# Stage 3: Final runtime image
+FROM alpine:3.19
 
-# Install ca-certificates for HTTPS support
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates docker-cli curl
 
-# Set the working directory inside the final image
+RUN mkdir -p /code && chmod 777 /code
+
 WORKDIR /root/
 
-# Copy the built binary from the builder stage
 COPY --from=builder /app/executor .
-
-# Copy configs if needed (like languages.json)
 COPY --from=builder /app/configs ./configs
 
-# Expose the port your app runs on
 EXPOSE 8080
 
-# Command to run the binary
 CMD ["./executor"]
 

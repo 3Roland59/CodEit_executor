@@ -1,56 +1,46 @@
 package runner
 
 import (
-    "bytes"
-    "context"
-    "fmt"
-    "os/exec"
-    "time"
+	"bytes"
+	"context"
+	"fmt"
+	"os/exec"
+	"time"
 )
 
-// RunDocker runs code inside a docker container using the specified image and command.
-// codeFile is the filename inside /tmp folder (mounted as /code).
-// input is passed to container stdin.
-func RunDocker(image, command, code string, input interface{}) (string, error) {
-    // Convert input to string
-    inputStr := ""
-    if s, ok := input.(string); ok {
-        inputStr = s
-    } else {
-        inputStr = fmt.Sprintf("%v", input)
-    }
+func RunDocker(image, command string, input interface{}) (string, error) {
+	inputStr := fmt.Sprintf("%v", input)
 
-    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 
-    // Compose docker run command with resource limits and no network
-    containerCmd := exec.CommandContext(ctx, "docker", "run",
-        "--rm",
-        "--network=none",    // isolate container network
-        "--memory=64m",      // limit memory usage
-        "--cpus=0.5",        // limit CPU usage
-        "-v", "/tmp:/code",  // mount /tmp to /code inside container
-        image,
-        "sh", "-c", command,
-    )
+	containerCmd := exec.CommandContext(ctx, "docker", "run",
+		"--rm",
+		"-i",
+		"--network=none",
+		"--memory=64m",
+		"--cpus=0.5",
+		"-v", "/code:/code", // Internal Docker mount only
+		image,
+		"sh", "-c", command,
+	)
 
-    var stdout, stderr bytes.Buffer
-    containerCmd.Stdout = &stdout
-    containerCmd.Stderr = &stderr
-    containerCmd.Stdin = bytes.NewBufferString(inputStr) // pass input via stdin
+	fmt.Printf("Running: docker run --rm -i --network=none --memory=64m --cpus=0.5 -v /code:/code %s sh -c '%s'\n", image, command)
 
-    err := containerCmd.Run()
+	var stdout, stderr bytes.Buffer
+	containerCmd.Stdout = &stdout
+	containerCmd.Stderr = &stderr
+	containerCmd.Stdin = bytes.NewBufferString(inputStr)
 
-    // Timeout error
-    if ctx.Err() == context.DeadlineExceeded {
-        return "", fmt.Errorf("execution timed out")
-    }
+	err := containerCmd.Run()
 
-    // On error return stderr + err
-    if err != nil {
-        return stderr.String(), fmt.Errorf("exec error: %v", err)
-    }
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", fmt.Errorf("execution timed out")
+	}
+	if err != nil {
+		return stderr.String(), fmt.Errorf("exec error: %v", err)
+	}
 
-    return stdout.String(), nil
+	return stdout.String(), nil
 }
 
